@@ -1,0 +1,17 @@
+{
+    "name": "draftbox-workspace",
+    "private": true,
+    "scripts": {
+        "build": "pnpm --recursive build",
+        "check": "pnpm --recursive check",
+        "test": "pnpm --recursive test"
+    },
+    "devDependencies": {
+        "@cloudflare/vitest-pool-workers": "^0.22.0",
+        "@cloudflare/workers-types": "^5.20260821.1",
+        "@types/node": "^26.2.0",
+        "typescript": "^7.0.2",
+        "vitest": "^4.1.11",
+        "wrangler": "^4.125.0"
+    }
+}
