@@ -1,0 +1,26 @@
+{
+  "name": "draftbox",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Manage and share versioned HTML artifacts with Draftbox.",
+  "engines": {
+    "node": ">=22.11"
+  },
+  "bin": {
+    "draftbox": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "cli": "node dist/index.js",
+    "dev": "DRAFTBOX_API_URL=\"http://localhost:8787\" pnpm run cli",
+    "test": "pnpm run build && node --test --experimental-strip-types test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@draftbox/contracts": "workspace:*",
+    "commander": "^15.0.0"
+  }
+}

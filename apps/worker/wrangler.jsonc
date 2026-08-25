@@ -1,0 +1,27 @@
+{
+    "$schema": "../../node_modules/wrangler/config-schema.json",
+    "name": "draftbox",
+    "main": "src/index.ts",
+    "compatibility_date": "2026-08-15",
+    "workers_dev": true,
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "draftbox",
+            "database_id": "00000000-0000-0000-0000-000000000000",
+            "migrations_dir": "migrations"
+        }
+    ],
+    "r2_buckets": [
+        {
+            "binding": "ARTIFACTS",
+            "bucket_name": "draftbox-artifacts"
+        }
+    ],
+    "vars": {
+        "WORKOS_AUDIENCE": "client_01M0N6SYT5X1HMS3PY81R2XZPB",
+        "WORKOS_CLIENT_ID": "client_01M0PNAJFAWP8RH8SXQY2Q7TS5",
+        "WORKOS_ISSUER": "https://palatial-chess-26-staging.authkit.app",
+        "WORKOS_JWKS_URL": "https://palatial-chess-26-staging.authkit.app/oauth2/jwks"
+    }
+}

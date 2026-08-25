@@ -1,0 +1,16 @@
+{
+    "name": "@draftbox/worker",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "wrangler deploy --dry-run --outdir dist",
+        "check": "tsc --noEmit",
+        "dev": "wrangler dev",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@draftbox/contracts": "workspace:*",
+        "hono": "^4.13.3",
+        "jose": "^6.2.9"
+    }
+}
