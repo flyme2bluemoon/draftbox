@@ -8,7 +8,7 @@
         {
             "binding": "DB",
             "database_name": "draftbox",
-            "database_id": "00000000-0000-0000-0000-000000000000",
+            "database_id": "7ca1c48b-a3c4-4d9f-9627-0b7e7d493e70",
             "migrations_dir": "migrations"
         }
     ],
