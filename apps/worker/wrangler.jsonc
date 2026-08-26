@@ -4,6 +4,11 @@
     "main": "src/index.ts",
     "compatibility_date": "2026-08-15",
     "workers_dev": true,
+    // Workspace package exports point at dist/, which is gitignored. Alias to
+    // source so `wrangler deploy` works without a prior contracts build (Workers Builds).
+    "alias": {
+        "@draftbox/contracts": "../../packages/contracts/src/index.ts"
+    },
     "d1_databases": [
         {
             "binding": "DB",

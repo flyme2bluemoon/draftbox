@@ -63,21 +63,16 @@ Copy the returned D1 database ID into `apps/worker/wrangler.jsonc`, then apply t
 
 ```sh
 pnpm exec wrangler d1 migrations apply draftbox --remote
-pnpm run deploy
+pnpm exec wrangler deploy
 ```
 
-`pnpm run deploy` builds `@draftbox/contracts` first. Wrangler resolves that package to `dist/index.js`, which is not checked in, so a bare `wrangler deploy` fails until contracts are built.
+`wrangler.jsonc` aliases `@draftbox/contracts` to its TypeScript source so Wrangler can bundle the workspace package without a prior `dist/` build. That matches Workers Builds, which runs `pnpm exec wrangler deploy` after install.
+
+For local scripts that also exercise Node consumers of contracts, `pnpm run deploy` still builds `@draftbox/contracts` first.
 
 ### Workers Builds (Git integration)
 
-If the Worker is connected to this repository in the Cloudflare dashboard, set the root directory to `apps/worker` and:
-
-| Setting | Command |
-| --- | --- |
-| Build command | `pnpm run build:deps` |
-| Deploy command | `pnpm exec wrangler deploy` |
-
-Alternatively set the deploy command to `pnpm run deploy` and leave the build command empty. Either way, contracts must be built before Wrangler runs.
+Use root directory `apps/worker`. The default deploy command `pnpm exec wrangler deploy` is enough; no separate build command is required for the Worker.
 
 After the first deployment, put the assigned `workers.dev` URL into `packages/cli/src/config.ts` before publishing the CLI. For local development or a different deployment, override the source defaults with environment variables:
 
