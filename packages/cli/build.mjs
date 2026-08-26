@@ -16,8 +16,6 @@ await esbuild.build({
     format: "esm",
     target: "node22",
     outfile: "dist/index.js",
-    // Keep public registry deps external. Bundle private workspace code
-    // (@draftbox/contracts) and its transitive deps (zod) into the binary.
     external: ["commander"],
     alias: {
         "@draftbox/contracts": contractsEntry,
