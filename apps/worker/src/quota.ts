@@ -65,21 +65,12 @@ export function d1FreeTierApiError(error: unknown): ApiError | undefined {
 }
 
 async function readUsage(env: Env): Promise<QuotaUsageRow> {
-    const row = await env.DB.prepare(
-        `SELECT
-            (SELECT COALESCE(SUM(byte_size), 0) FROM versions) AS r2_storage_bytes,
-            (SELECT page_count FROM pragma_page_count())
-                * (SELECT page_size FROM pragma_page_size()) AS d1_bytes`,
-    )
-        .first<QuotaUsageRow>();
-
-    if (row === null) {
-        throw new Error("Failed to read storage usage.");
-    }
-
+    const result = await env.DB.prepare(
+        "SELECT COALESCE(SUM(byte_size), 0) AS r2_storage_bytes FROM versions",
+    ).all<{ r2_storage_bytes: number }>();
     const usage = {
-        r2_storage_bytes: Number(row.r2_storage_bytes),
-        d1_bytes: Number(row.d1_bytes),
+        r2_storage_bytes: Number(result.results[0]?.r2_storage_bytes),
+        d1_bytes: Number(result.meta.size_after),
     };
     if (!Number.isFinite(usage.r2_storage_bytes) || !Number.isFinite(usage.d1_bytes)) {
         throw new Error("Failed to read storage usage.");
