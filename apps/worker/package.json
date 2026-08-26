@@ -3,10 +3,12 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "wrangler deploy --dry-run --outdir dist",
+        "build:deps": "pnpm --filter @draftbox/contracts run build",
+        "build": "pnpm run build:deps && wrangler deploy --dry-run --outdir dist",
         "check": "tsc --noEmit",
-        "dev": "wrangler dev",
-        "test": "vitest run"
+        "deploy": "pnpm run build:deps && wrangler deploy",
+        "dev": "pnpm run build:deps && wrangler dev",
+        "test": "pnpm run build:deps && vitest run"
     },
     "dependencies": {
         "@draftbox/contracts": "workspace:*",
