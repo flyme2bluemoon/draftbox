@@ -10,17 +10,26 @@
     "draftbox": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist/index.js"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flyme2bluemoon/draftbox.git",
+    "directory": "packages/cli"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "node ./build.mjs",
     "check": "tsc --noEmit",
     "cli": "node dist/index.js",
     "dev": "DRAFTBOX_API_URL=\"http://localhost:8787\" pnpm run cli",
-    "test": "pnpm run build && node --test --experimental-strip-types test/**/*.test.ts"
+    "prepack": "pnpm run build",
+    "test": "tsc && node --test --experimental-strip-types test/**/*.test.ts"
   },
   "dependencies": {
-    "@draftbox/contracts": "workspace:*",
     "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "@draftbox/contracts": "workspace:*",
+    "esbuild": "^0.25.12"
   }
 }

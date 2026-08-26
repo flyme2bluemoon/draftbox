@@ -66,7 +66,14 @@ pnpm exec wrangler d1 migrations apply draftbox --remote
 pnpm exec wrangler deploy
 ```
 
-After the first deployment, put the assigned `workers.dev` URL into `packages/cli/src/config.ts` before publishing the CLI. For local development or a different deployment, override the source defaults with environment variables:
+After the first deployment, put the assigned `workers.dev` URL into `packages/cli/src/config.ts` before publishing the CLI. `@draftbox/contracts` stays private; the CLI build bundles it into `draftbox` so installs do not need that package on the registry.
+
+```sh
+pnpm --filter draftbox pack
+pnpm --filter draftbox publish
+```
+
+For local development or a different deployment, override the source defaults with environment variables:
 
 ```sh
 export DRAFTBOX_API_URL="https://draftbox.example.workers.dev"
