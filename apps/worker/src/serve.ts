@@ -1,4 +1,5 @@
 import { publicNotFound } from "./http";
+import { isD1FreeTierError } from "./quota";
 import type { Env } from "./types";
 
 const PUBLIC_PATH = /^\/p\/([A-Za-z0-9_-]{43})(?:\/v([1-9]\d*))?\/?$/;
@@ -8,6 +9,23 @@ interface PublicObjectRow {
 }
 
 export async function servePublic(request: Request, env: Env): Promise<Response> {
+    try {
+        return await servePublicUnchecked(request, env);
+    } catch (error) {
+        if (isD1FreeTierError(error)) {
+            return new Response("Service Unavailable", {
+                status: 503,
+                headers: {
+                    "Cache-Control": "no-store",
+                    "Content-Type": "text/plain; charset=utf-8",
+                },
+            });
+        }
+        throw error;
+    }
+}
+
+async function servePublicUnchecked(request: Request, env: Env): Promise<Response> {
     if (request.method !== "GET" && request.method !== "HEAD") {
         return publicNotFound();
     }
