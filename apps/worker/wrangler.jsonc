@@ -20,7 +20,6 @@
     ],
     "vars": {
         "WORKOS_AUDIENCE": "client_01M0N6SYT5X1HMS3PY81R2XZPB",
-        "WORKOS_CLIENT_ID": "client_01M0PNAJFAWP8RH8SXQY2Q7TS5",
         "WORKOS_ISSUER": "https://palatial-chess-26-staging.authkit.app",
         "WORKOS_JWKS_URL": "https://palatial-chess-26-staging.authkit.app/oauth2/jwks"
     }

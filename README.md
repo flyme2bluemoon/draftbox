@@ -37,14 +37,13 @@ node packages/cli/dist/index.js --help
 2. In Authentication settings, turn off **Sign up**. Invite users from **Users → Invites** in the WorkOS dashboard.
 3. Under Connect, create a first-party OAuth application for the CLI and configure it as a **Public** application. Record its client ID. No client secret belongs in the CLI.
 4. Ensure the application can request `openid profile email offline_access`.
-5. Confirm that `apps/worker/wrangler.jsonc` contains the access-token audience, public OAuth client ID, and URLs from the same WorkOS environment. The audience is the access token's `aud` claim. It is not necessarily the OAuth application's client ID.
+5. Confirm that `apps/worker/wrangler.jsonc` contains the access-token audience and AuthKit URLs from the same WorkOS environment. The audience is the access token's `aud` claim. It is not the CLI OAuth application's client ID. Put that client ID in the CLI config or `DRAFTBOX_WORKOS_CLIENT_ID`.
 
 ```json
 {
-    "WORKOS_AUDIENCE": "client_api_...",
-    "WORKOS_CLIENT_ID": "client_oauth_...",
-    "WORKOS_ISSUER": "https://your-domain.authkit.app",
-    "WORKOS_JWKS_URL": "https://your-domain.authkit.app/oauth2/jwks"
+  "WORKOS_AUDIENCE": "client_api_...",
+  "WORKOS_ISSUER": "https://your-domain.authkit.app",
+  "WORKOS_JWKS_URL": "https://your-domain.authkit.app/oauth2/jwks"
 }
 ```
 
@@ -72,9 +71,9 @@ pnpm run deploy
 
 If the Worker is connected to this repository in the Cloudflare dashboard, set the root directory to `apps/worker` and:
 
-| Setting | Command |
-| --- | --- |
-| Build command | `pnpm run build:deps` |
+| Setting        | Command                     |
+| -------------- | --------------------------- |
+| Build command  | `pnpm run build:deps`       |
 | Deploy command | `pnpm exec wrangler deploy` |
 
 Alternatively set the deploy command to `pnpm run deploy` and leave the build command empty. Either way, contracts must be built before Wrangler runs.

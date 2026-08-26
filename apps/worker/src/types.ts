@@ -4,7 +4,6 @@ export interface Env {
     ARTIFACTS: R2Bucket;
     DB: D1Database;
     WORKOS_AUDIENCE: string;
-    WORKOS_CLIENT_ID: string;
     WORKOS_ISSUER: string;
     WORKOS_JWKS_URL: string;
 }
