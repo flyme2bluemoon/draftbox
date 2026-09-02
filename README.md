@@ -79,7 +79,7 @@ If the Worker is connected to this repository in the Cloudflare dashboard, set t
 
 Alternatively set the deploy command to `pnpm run deploy` and leave the build command empty. Either way, contracts must be built before Wrangler runs.
 
-The Worker refuses uploads that would take stored artifact bytes over 9.5 GB, leaving headroom under Cloudflare's 10 GB R2 free allowance. Deleting artifacts or versions still works so stored usage can be reduced. Cloudflare itself blocks D1 once daily row limits are hit; the API returns `quota_exceeded` for those errors.
+The Worker refuses uploads that would take stored artifact bytes over 9 GB, leaving 1 GB of headroom under Cloudflare's 10 GB R2 free allowance. Deleting artifacts or versions still works so stored usage can be reduced. Cloudflare itself blocks D1 once daily row limits are hit; the API returns `quota_exceeded` for those errors.
 
 After the first deployment, put the assigned `workers.dev` URL into `packages/cli/src/config.ts` before publishing the CLI. For local development or a different deployment, override the source defaults with environment variables:
 

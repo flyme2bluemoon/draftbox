@@ -382,7 +382,7 @@ describe("free-tier quota", () => {
         expect(apiErrorResponseSchema.parse(await response.json())).toEqual({
             error: {
                 code: "quota_exceeded",
-                message: "R2 storage would exceed the 9.5 GB free-tier cap.",
+                message: "R2 storage would exceed the 9 GB free-tier cap.",
             },
         });
         expect(await env.ARTIFACTS.list()).toMatchObject({ objects: [] });

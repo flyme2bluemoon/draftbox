@@ -4,7 +4,7 @@ import type { Env } from "./types";
 // Cloudflare's R2 free allowance is 10 GB-month. Cap below that so object
 // metadata and concurrent uploads cannot bill.
 // https://developers.cloudflare.com/r2/pricing/
-export const R2_FREE_STORAGE_BYTES = 9_500_000_000;
+export const R2_FREE_STORAGE_BYTES = 9_000_000_000;
 
 function errorText(error: unknown): string {
     if (!(error instanceof Error)) {
@@ -62,7 +62,7 @@ export async function assertUploadFitsStorage(env: Env, uploadBytes: number): Pr
         throw new ApiError(
             507,
             "quota_exceeded",
-            "R2 storage would exceed the 9.5 GB free-tier cap.",
+            "R2 storage would exceed the 9 GB free-tier cap.",
         );
     }
 }
