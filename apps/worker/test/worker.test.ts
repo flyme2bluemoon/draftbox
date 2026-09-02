@@ -3,13 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { apiErrorResponseSchema } from "@draftbox/contracts";
 
 import { handleRequest } from "../src/index";
-import {
-    d1FreeTierApiError,
-    R2_CLASS_A_METRIC,
-    R2_FREE_CLASS_A_PER_MONTH,
-    R2_FREE_STORAGE_BYTES,
-    utcMonthPeriod,
-} from "../src/quota";
+import { d1FreeTierApiError, R2_FREE_STORAGE_BYTES } from "../src/quota";
 import type { Authenticate, AuthenticatedUser, Env } from "../src/types";
 
 const OWNER: AuthenticatedUser = { id: "user_owner", email: "owner@example.com" };
@@ -68,7 +62,6 @@ beforeEach(async () => {
         await env.ARTIFACTS.delete(objects.objects.map((object) => object.key));
     }
     await env.DB.prepare("DELETE FROM artifacts").run();
-    await env.DB.prepare("DELETE FROM usage_counters").run();
 });
 
 describe("artifact lifecycle", () => {
@@ -374,23 +367,6 @@ describe("free-tier quota", () => {
         return artifactId;
     }
 
-    async function seedClassA(count: number): Promise<void> {
-        await env.DB.prepare(
-            "INSERT INTO usage_counters (period, metric, value) VALUES (?, ?, ?)",
-        )
-            .bind(utcMonthPeriod(), R2_CLASS_A_METRIC, count)
-            .run();
-    }
-
-    async function classACount(): Promise<number> {
-        const row = await env.DB.prepare(
-            "SELECT value FROM usage_counters WHERE period = ? AND metric = ?",
-        )
-            .bind(utcMonthPeriod(), R2_CLASS_A_METRIC)
-            .first<{ value: number }>();
-        return row?.value ?? 0;
-    }
-
     it("rejects an upload that would exceed R2 free-tier storage", async () => {
         await seedStoredBytes(R2_FREE_STORAGE_BYTES - 5);
         const response = await requestAs(OWNER, "/api/artifacts", {
@@ -406,10 +382,9 @@ describe("free-tier quota", () => {
         expect(apiErrorResponseSchema.parse(await response.json())).toEqual({
             error: {
                 code: "quota_exceeded",
-                message: "R2 storage would exceed the Cloudflare free-tier allowance of 10 GB.",
+                message: "R2 storage would exceed the 9.5 GB free-tier cap.",
             },
         });
-        expect(await classACount()).toBe(0);
         expect(await env.ARTIFACTS.list()).toMatchObject({ objects: [] });
     });
 
@@ -417,7 +392,6 @@ describe("free-tier quota", () => {
         await seedStoredBytes(R2_FREE_STORAGE_BYTES - 1_000);
         const created = await createArtifact("fits");
         expect(created.version.version).toBe(1);
-        expect(await classACount()).toBe(1);
     });
 
     it("frees R2 storage when a version is deleted", async () => {
@@ -439,56 +413,6 @@ describe("free-tier quota", () => {
 
         const created = await createArtifact();
         expect(created.version.version).toBe(1);
-    });
-
-    it("rejects an upload after the monthly R2 Class A allowance is consumed", async () => {
-        await seedClassA(R2_FREE_CLASS_A_PER_MONTH - 1);
-        const created = await createArtifact();
-        expect(created.version.version).toBe(1);
-        expect(await classACount()).toBe(R2_FREE_CLASS_A_PER_MONTH);
-
-        const response = await requestAs(
-            OWNER,
-            `/api/artifacts/${created.artifact.id}/versions`,
-            {
-                method: "POST",
-                headers: { "X-Draftbox-Source-Hash": SOURCE_HASH },
-                body: "two",
-            },
-        );
-        expect(response.status).toBe(429);
-        expect(apiErrorResponseSchema.parse(await response.json())).toEqual({
-            error: {
-                code: "quota_exceeded",
-                message:
-                    "R2 Class A operations would exceed the Cloudflare free-tier allowance of 1 million per month.",
-            },
-        });
-
-        const versions = await requestAs(
-            OWNER,
-            `/api/artifacts/${created.artifact.id}/versions`,
-        );
-        const listed = await versions.json<{ versions: { version: number }[] }>();
-        expect(listed.versions.map((version) => version.version)).toEqual([1]);
-        expect(await env.ARTIFACTS.get(`${created.artifact.id}/v2`)).toBeNull();
-        expect(await classACount()).toBe(R2_FREE_CLASS_A_PER_MONTH);
-    });
-
-    it("does not spend Class A operations on reads or deletes", async () => {
-        const created = await createArtifact();
-        expect(await classACount()).toBe(1);
-
-        await requestAs(OWNER, "/api/artifacts");
-        await requestAs(OWNER, `/api/artifacts/${created.artifact.id}/versions`);
-        await handleRequest(new Request(created.artifact.url), env as Env);
-        await requestAs(
-            OWNER,
-            `/api/artifacts/${created.artifact.id}/versions/1`,
-            { method: "DELETE" },
-        );
-
-        expect(await classACount()).toBe(1);
     });
 
     it("maps D1 free-tier platform errors onto the API contract", () => {

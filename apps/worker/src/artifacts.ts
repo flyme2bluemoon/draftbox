@@ -13,7 +13,7 @@ import {
 } from "@draftbox/contracts";
 
 import { ApiError, jsonResponse } from "./http";
-import { reserveUploadQuota } from "./quota";
+import { assertUploadFitsStorage } from "./quota";
 import type {
     ArtifactRow,
     AuthenticatedUser,
@@ -204,7 +204,7 @@ export async function createArtifact(
     });
 
     const bytes = await readUpload(request);
-    await reserveUploadQuota(env, bytes.byteLength);
+    await assertUploadFitsStorage(env, bytes.byteLength);
     const now = new Date().toISOString();
     const artifactId = crypto.randomUUID();
     const shareSecret = createShareSecret();
@@ -291,7 +291,7 @@ export async function addVersion(
     const metadataPatch = readMetadataHeaders(request);
     const bytes = await readUpload(request);
     const artifact = await findOwnedArtifact(env, artifactId, user.id);
-    await reserveUploadQuota(env, bytes.byteLength);
+    await assertUploadFitsStorage(env, bytes.byteLength);
     const allocated = await env.DB.prepare(
         `UPDATE artifacts
          SET next_version = next_version + 1
