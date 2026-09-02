@@ -1,7 +1,7 @@
 import { ApiError } from "./http";
 import type { Env } from "./types";
 
-// Cloudflare's R2 free allowance is 10 GB-month. Cap below that so object
+// Cloudflare's R2 free allowance is 10 GB-month. Cap at 9 GB so object
 // metadata and concurrent uploads cannot bill.
 // https://developers.cloudflare.com/r2/pricing/
 export const R2_FREE_STORAGE_BYTES = 9_000_000_000;
