@@ -1,5 +1,5 @@
 import { publicNotFound } from "./http";
-import { isD1FreeTierError } from "./quota";
+import { d1FreeTierApiError } from "./quota";
 import type { Env } from "./types";
 
 const PUBLIC_PATH = /^\/p\/([A-Za-z0-9_-]{43})(?:\/v([1-9]\d*))?\/?$/;
@@ -58,7 +58,7 @@ export async function servePublic(request: Request, env: Env): Promise<Response>
 
         return new Response(request.method === "HEAD" ? null : object.body, { headers });
     } catch (error) {
-        if (isD1FreeTierError(error)) {
+        if (d1FreeTierApiError(error) !== undefined) {
             return new Response("Service Unavailable", {
                 status: 503,
                 headers: {
