@@ -69,6 +69,7 @@ export const apiErrorCodeSchema = z.enum([
     "invalid_token",
     "missing_metadata",
     "not_found",
+    "quota_exceeded",
     "unauthenticated",
     "upload_too_large",
     "version_not_found",

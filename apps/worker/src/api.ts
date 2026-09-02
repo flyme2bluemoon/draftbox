@@ -12,6 +12,7 @@ import {
     rotateLink,
 } from "./artifacts";
 import { ApiError, apiErrorResponse, jsonResponse } from "./http";
+import { d1FreeTierApiError } from "./quota";
 import type { Authenticate, AuthenticatedUser, Env } from "./types";
 
 export interface WorkerHonoEnv {
@@ -28,7 +29,7 @@ function endpointNotFound(): never {
 export function createApi(authenticate: Authenticate): Hono<WorkerHonoEnv> {
     const api = new Hono<WorkerHonoEnv>();
 
-    api.onError((error) => apiErrorResponse(error));
+    api.onError((error) => apiErrorResponse(d1FreeTierApiError(error) ?? error));
     api.use("*", async (context, next) => {
         const user = await authenticate(context.req.raw, context.env);
         context.set("user", user);

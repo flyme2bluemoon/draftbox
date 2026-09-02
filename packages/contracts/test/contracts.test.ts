@@ -41,3 +41,13 @@ test("rejects empty and unknown metadata patches", () => {
 test("rejects malformed API errors", () => {
     assert.equal(apiErrorResponseSchema.safeParse({ error: { message: "Nope" } }).success, false);
 });
+
+test("accepts quota_exceeded API errors", () => {
+    const response = {
+        error: {
+            code: "quota_exceeded",
+            message: "R2 storage would exceed the 9 GB free-tier cap.",
+        },
+    };
+    assert.deepEqual(apiErrorResponseSchema.parse(response), response);
+});

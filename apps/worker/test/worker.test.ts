@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { apiErrorResponseSchema } from "@draftbox/contracts";
 
 import { handleRequest } from "../src/index";
+import { d1FreeTierApiError, R2_FREE_STORAGE_BYTES } from "../src/quota";
 import type { Authenticate, AuthenticatedUser, Env } from "../src/types";
 
 const OWNER: AuthenticatedUser = { id: "user_owner", email: "owner@example.com" };
@@ -336,3 +337,112 @@ describe("artifact lifecycle", () => {
         expect(listed.versions.map((version) => version.version)).toEqual([1]);
     });
 });
+
+describe("free-tier quota", () => {
+    async function seedStoredBytes(byteSize: number): Promise<string> {
+        const now = new Date().toISOString();
+        const artifactId = crypto.randomUUID();
+        const shareSecret = crypto.randomUUID();
+        await env.DB.batch([
+            env.DB.prepare(
+                `INSERT INTO artifacts (
+                    id, owner_id, filename, description, share_secret,
+                    current_version, next_version, created_at, updated_at
+                ) VALUES (?, ?, 'seed.html', '', ?, 1, 2, ?, ?)`,
+            ).bind(artifactId, OWNER.id, shareSecret, now, now),
+            env.DB.prepare(
+                `INSERT INTO versions (
+                    artifact_id, version_number, r2_key, content_hash, source_hash,
+                    byte_size, created_at
+                ) VALUES (?, 1, ?, ?, ?, ?, ?)`,
+            ).bind(
+                artifactId,
+                `${artifactId}/v1`,
+                "b".repeat(64),
+                "c".repeat(64),
+                byteSize,
+                now,
+            ),
+        ]);
+        return artifactId;
+    }
+
+    it("rejects an upload that would exceed R2 free-tier storage", async () => {
+        await seedStoredBytes(R2_FREE_STORAGE_BYTES - 5);
+        const response = await requestAs(OWNER, "/api/artifacts", {
+            method: "POST",
+            headers: {
+                "X-Draftbox-Filename": encodeURIComponent("page.html"),
+                "X-Draftbox-Source-Hash": SOURCE_HASH,
+            },
+            body: "<h1>too big</h1>",
+        });
+
+        expect(response.status).toBe(507);
+        expect(apiErrorResponseSchema.parse(await response.json())).toEqual({
+            error: {
+                code: "quota_exceeded",
+                message: "R2 storage would exceed the 9 GB free-tier cap.",
+            },
+        });
+        expect(await env.ARTIFACTS.list()).toMatchObject({ objects: [] });
+    });
+
+    it("allows an upload that fits in remaining R2 storage", async () => {
+        await seedStoredBytes(R2_FREE_STORAGE_BYTES - 1_000);
+        const created = await createArtifact("fits");
+        expect(created.version.version).toBe(1);
+    });
+
+    it("frees R2 storage when a version is deleted", async () => {
+        const seededId = await seedStoredBytes(R2_FREE_STORAGE_BYTES - 5);
+        const blocked = await requestAs(OWNER, "/api/artifacts", {
+            method: "POST",
+            headers: {
+                "X-Draftbox-Filename": encodeURIComponent("page.html"),
+                "X-Draftbox-Source-Hash": SOURCE_HASH,
+            },
+            body: "<h1>too big</h1>",
+        });
+        expect(blocked.status).toBe(507);
+
+        const deletion = await requestAs(OWNER, `/api/artifacts/${seededId}`, {
+            method: "DELETE",
+        });
+        expect(deletion.status).toBe(204);
+
+        const created = await createArtifact();
+        expect(created.version.version).toBe(1);
+    });
+
+    it("maps D1 free-tier platform errors onto the API contract", () => {
+        expect(d1FreeTierApiError(
+            new Error("Your account has exceeded D1's free tier daily row read limit. Upgrade to a paid plan or wait until tomorrow (midnight UTC) to continue."),
+        )).toMatchObject({
+            status: 429,
+            code: "quota_exceeded",
+        });
+        expect(d1FreeTierApiError(
+            new Error("Your account has exceeded D1's free tier daily row write limit. Upgrade to a paid plan or wait until tomorrow (midnight UTC) to continue."),
+        )).toMatchObject({
+            status: 429,
+            code: "quota_exceeded",
+        });
+        expect(d1FreeTierApiError(new Error("Exceeded maximum DB size."))).toMatchObject({
+            status: 507,
+            code: "quota_exceeded",
+        });
+        expect(d1FreeTierApiError(new Error("D1 DB is overloaded. Too many requests queued.")))
+            .toBeUndefined();
+
+        const wrapped = new Error("D1_ERROR");
+        wrapped.cause = new Error(
+            "Your account has exceeded D1's free tier daily row read limit. Upgrade to a paid plan or wait until tomorrow (midnight UTC) to continue.",
+        );
+        expect(d1FreeTierApiError(wrapped)).toMatchObject({
+            status: 429,
+            code: "quota_exceeded",
+        });
+    });
+});
+

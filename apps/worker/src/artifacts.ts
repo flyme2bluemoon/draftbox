@@ -13,6 +13,7 @@ import {
 } from "@draftbox/contracts";
 
 import { ApiError, jsonResponse } from "./http";
+import { assertUploadFitsStorage } from "./quota";
 import type {
     ArtifactRow,
     AuthenticatedUser,
@@ -203,6 +204,7 @@ export async function createArtifact(
     });
 
     const bytes = await readUpload(request);
+    await assertUploadFitsStorage(env, bytes.byteLength);
     const now = new Date().toISOString();
     const artifactId = crypto.randomUUID();
     const shareSecret = createShareSecret();
@@ -288,6 +290,8 @@ export async function addVersion(
     const sourceHash = readSourceHash(request);
     const metadataPatch = readMetadataHeaders(request);
     const bytes = await readUpload(request);
+    const artifact = await findOwnedArtifact(env, artifactId, user.id);
+    await assertUploadFitsStorage(env, bytes.byteLength);
     const allocated = await env.DB.prepare(
         `UPDATE artifacts
          SET next_version = next_version + 1
@@ -301,7 +305,6 @@ export async function addVersion(
         throw new ApiError(404, "artifact_not_found", "Artifact not found.");
     }
 
-    const artifact = await findOwnedArtifact(env, artifactId, user.id);
     const filename = metadataPatch.filename ?? artifact.filename;
     const description = metadataPatch.description ?? artifact.description;
     const versionNumber = allocated.version_number;
