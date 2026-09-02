@@ -42,9 +42,6 @@ export const authenticateRequest: Authenticate = async (
         if (typeof payload.sub !== "string" || payload.sub.length === 0) {
             throw new Error("The access token has no subject.");
         }
-        if (payload.client_id !== env.WORKOS_CLIENT_ID) {
-            throw new Error("The access token was issued to a different OAuth client.");
-        }
 
         return {
             id: payload.sub,

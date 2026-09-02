@@ -37,14 +37,13 @@ node packages/cli/dist/index.js --help
 2. In Authentication settings, turn off **Sign up**. Invite users from **Users → Invites** in the WorkOS dashboard.
 3. Under Connect, create a first-party OAuth application for the CLI and configure it as a **Public** application. Record its client ID. No client secret belongs in the CLI.
 4. Ensure the application can request `openid profile email offline_access`.
-5. Confirm that `apps/worker/wrangler.jsonc` contains the access-token audience, public OAuth client ID, and URLs from the same WorkOS environment. The audience is the access token's `aud` claim. It is not necessarily the OAuth application's client ID.
+5. Confirm that `apps/worker/wrangler.jsonc` contains the access-token audience and AuthKit URLs from the same WorkOS environment. The audience is the access token's `aud` claim. It is not the CLI OAuth application's client ID. Put that client ID in the CLI config or `DRAFTBOX_WORKOS_CLIENT_ID`.
 
 ```json
 {
-    "WORKOS_AUDIENCE": "client_api_...",
-    "WORKOS_CLIENT_ID": "client_oauth_...",
-    "WORKOS_ISSUER": "https://your-domain.authkit.app",
-    "WORKOS_JWKS_URL": "https://your-domain.authkit.app/oauth2/jwks"
+  "WORKOS_AUDIENCE": "client_api_...",
+  "WORKOS_ISSUER": "https://your-domain.authkit.app",
+  "WORKOS_JWKS_URL": "https://your-domain.authkit.app/oauth2/jwks"
 }
 ```
 
@@ -72,16 +71,23 @@ pnpm run deploy
 
 If the Worker is connected to this repository in the Cloudflare dashboard, set the root directory to `apps/worker` and:
 
-| Setting | Command |
-| --- | --- |
-| Build command | `pnpm run build:deps` |
+| Setting        | Command                     |
+| -------------- | --------------------------- |
+| Build command  | `pnpm run build:deps`       |
 | Deploy command | `pnpm exec wrangler deploy` |
 
 Alternatively set the deploy command to `pnpm run deploy` and leave the build command empty. Either way, contracts must be built before Wrangler runs.
 
 The Worker refuses uploads that would take stored artifact bytes over 9 GB, leaving 1 GB of headroom under Cloudflare's 10 GB R2 free allowance. Deleting artifacts or versions still works so stored usage can be reduced. Cloudflare itself blocks D1 once daily row limits are hit; the API returns `quota_exceeded` for those errors.
 
-After the first deployment, put the assigned `workers.dev` URL into `packages/cli/src/config.ts` before publishing the CLI. For local development or a different deployment, override the source defaults with environment variables:
+After the first deployment, put the assigned `workers.dev` URL into `packages/cli/src/config.ts` before publishing the CLI. `@draftbox/contracts` stays private; the CLI build bundles it into `draftbox` so installs do not need that package on the registry.
+
+```sh
+pnpm --filter draftbox pack
+pnpm --filter draftbox publish
+```
+
+For local development or a different deployment, override the source defaults with environment variables:
 
 ```sh
 export DRAFTBOX_API_URL="https://draftbox.example.workers.dev"
