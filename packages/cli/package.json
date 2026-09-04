@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Manage and share versioned HTML artifacts with Draftbox.",
+  "license": "MIT",
+  "homepage": "https://github.com/flyme2bluemoon/draftbox",
+  "bugs": "https://github.com/flyme2bluemoon/draftbox/issues",
   "engines": {
     "node": ">=22.11"
   },
@@ -10,7 +13,8 @@
     "draftbox": "dist/index.js"
   },
   "files": [
-    "dist/index.js"
+    "dist/index.js",
+    "dist/LICENSE"
   ],
   "repository": {
     "type": "git",

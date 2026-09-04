@@ -1,13 +1,16 @@
-import { rm } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import * as esbuild from "esbuild";
 
 await rm("dist", { recursive: true, force: true });
+await mkdir("dist");
 
 const contractsEntry = fileURLToPath(
     new URL("../contracts/src/index.ts", import.meta.url),
 );
+const license = fileURLToPath(new URL("../../LICENSE", import.meta.url));
+await copyFile(license, "dist/LICENSE");
 
 await esbuild.build({
     entryPoints: ["src/index.ts"],
