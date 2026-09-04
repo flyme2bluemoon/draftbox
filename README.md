@@ -1,15 +1,15 @@
 # Draftbox
 
-Draftbox is a small Cloudflare-hosted service for uploading, versioning, and sharing single-file HTML artifacts. Management happens through a TypeScript CLI; public pages need only an unguessable link.
+Draftbox uploads, versions, and shares single-file HTML pages on Cloudflare. You manage artifacts with a TypeScript CLI. Anyone with the link can open a page; the link is hard to guess, not password-gated.
 
-The implementation consists of:
+Stack:
 
-- one Cloudflare Worker for the authenticated `/api/*` routes and public `/p/*` routes;
-- D1 for ownership, artifact metadata, version records, and share secrets;
-- R2 for uploaded bytes;
-- WorkOS AuthKit and a public WorkOS Connect OAuth application for CLI device authentication;
-- a shared `@draftbox/contracts` package for API schemas and inferred TypeScript types; and
-- a Commander-based CLI published as the `draftbox` package.
+- one Cloudflare Worker for authenticated `/api/*` routes and public `/p/*` routes
+- D1 for ownership, artifact metadata, versions, and share secrets
+- R2 for uploaded bytes
+- WorkOS AuthKit plus a public WorkOS Connect OAuth app for CLI device login
+- `@draftbox/contracts` for API schemas and the TypeScript types inferred from them
+- a Commander CLI published as the `draftbox` package
 
 ## Development
 
@@ -22,9 +22,9 @@ pnpm test
 pnpm build
 ```
 
-The Worker integration tests run against local D1 and R2 instances in Cloudflare's Workers runtime. They do not use hosted resources.
+Worker integration tests use local D1 and R2 inside Cloudflare's Workers runtime. They never touch hosted resources.
 
-To run the CLI from a checkout:
+Run the CLI from a checkout:
 
 ```sh
 pnpm --filter draftbox build
@@ -35,9 +35,9 @@ node packages/cli/dist/index.js --help
 
 1. Create an AuthKit environment and configure its hosted domain.
 2. In Authentication settings, turn off **Sign up**. Invite users from **Users → Invites** in the WorkOS dashboard.
-3. Under Connect, create a first-party OAuth application for the CLI and configure it as a **Public** application. Record its client ID. No client secret belongs in the CLI.
-4. Ensure the application can request `openid profile email offline_access`.
-5. Confirm that `apps/worker/wrangler.jsonc` contains the access-token audience and AuthKit URLs from the same WorkOS environment. The audience is the access token's `aud` claim. It is not the CLI OAuth application's client ID. Put that client ID in the CLI config or `DRAFTBOX_WORKOS_CLIENT_ID`.
+3. Under Connect, create a first-party OAuth application for the CLI. Make it a **Public** application. Save the client ID. The CLI must not hold a client secret.
+4. Allow the scopes `openid profile email offline_access`.
+5. Put the access-token audience and AuthKit URLs from that same WorkOS environment into `apps/worker/wrangler.jsonc`. The audience is the access token's `aud` claim, not the CLI OAuth app's client ID. Put the client ID in CLI config or `DRAFTBOX_WORKOS_CLIENT_ID`.
 
 ```json
 {
@@ -47,47 +47,47 @@ node packages/cli/dist/index.js --help
 }
 ```
 
-The CLI uses WorkOS's standard device authorization and token endpoints directly. The WorkOS Node SDK is useful for secret-bearing server integrations, but it does not simplify this public OAuth client enough to justify shipping it. The Worker uses `jose` for verified JWT parsing rather than implementing cryptography itself.
+The CLI talks to WorkOS's device authorization and token endpoints directly. The Worker verifies JWTs with `jose`.
 
 ## Cloudflare setup and deployment
 
-Create the resources from `apps/worker`:
+From `apps/worker`, create the resources:
 
 ```sh
 pnpm exec wrangler d1 create draftbox
 pnpm exec wrangler r2 bucket create draftbox-artifacts
 ```
 
-Copy the returned D1 database ID into `apps/worker/wrangler.jsonc`, then apply the migration and deploy:
+Paste the D1 database ID into `apps/worker/wrangler.jsonc`, then migrate and deploy:
 
 ```sh
 pnpm exec wrangler d1 migrations apply draftbox --remote
 pnpm run deploy
 ```
 
-`pnpm run deploy` builds `@draftbox/contracts` first. Wrangler resolves that package to `dist/index.js`, which is not checked in, so a bare `wrangler deploy` fails until contracts are built.
+`pnpm run deploy` builds `@draftbox/contracts` first. Wrangler loads that package from `dist/index.js`. A bare `wrangler deploy` fails until contracts are built.
 
 ### Workers Builds (Git integration)
 
-If the Worker is connected to this repository in the Cloudflare dashboard, set the root directory to `apps/worker` and:
+If the Worker is wired to this repo in the Cloudflare dashboard, set the root directory to `apps/worker` and:
 
 | Setting        | Command                     |
 | -------------- | --------------------------- |
 | Build command  | `pnpm run build:deps`       |
 | Deploy command | `pnpm exec wrangler deploy` |
 
-Alternatively set the deploy command to `pnpm run deploy` and leave the build command empty. Either way, contracts must be built before Wrangler runs.
+Or set the deploy command to `pnpm run deploy` and leave the build command empty. Either way, contracts must exist before Wrangler runs.
 
 The Worker refuses uploads that would take stored artifact bytes over 9 GB, leaving 1 GB of headroom under Cloudflare's 10 GB R2 free allowance. Deleting artifacts or versions still works so stored usage can be reduced. Cloudflare itself blocks D1 once daily row limits are hit; the API returns `quota_exceeded` for those errors.
 
-After the first deployment, put the assigned `workers.dev` URL into `packages/cli/src/config.ts` before publishing the CLI. `@draftbox/contracts` stays private; the CLI build bundles it into `draftbox` so installs do not need that package on the registry.
+After the first deploy, put the assigned `workers.dev` URL into `packages/cli/src/config.ts` before you publish the CLI. `@draftbox/contracts` stays private. The CLI build bundles it into `draftbox`, so installs do not need that package on the registry.
 
 ```sh
 pnpm --filter draftbox pack
 pnpm --filter draftbox publish
 ```
 
-For local development or a different deployment, override the source defaults with environment variables:
+For local work or another deployment, override the baked-in defaults:
 
 ```sh
 export DRAFTBOX_API_URL="https://draftbox.example.workers.dev"
@@ -95,7 +95,7 @@ export DRAFTBOX_WORKOS_AUTHKIT_URL="https://your-domain.authkit.app"
 export DRAFTBOX_WORKOS_CLIENT_ID="client_..."
 ```
 
-Then authenticate and upload:
+Then log in and upload:
 
 ```sh
 pnpx draftbox login
@@ -105,7 +105,7 @@ pnpx draftbox list
 
 Upload the same canonical file path from the same machine again and Draftbox adds a new version to the existing artifact. Pass `--artifact` to attach a file as a version of an already existing artifact (note this does not bind the file provenance (hostname/filepath) to the artifact).
 
-Credentials are stored in `${XDG_CONFIG_HOME:-~/.config}/draftbox/credentials.json` with owner-only permissions. Set `DRAFTBOX_CONFIG_DIR` to change that directory.
+Credentials live in `${XDG_CONFIG_HOME:-~/.config}/draftbox/credentials.json` with owner-only permissions. Set `DRAFTBOX_CONFIG_DIR` to change the directory.
 
 ## CLI commands
 
@@ -122,4 +122,4 @@ draftbox rotate-link <artifact-id>
 draftbox delete <artifact-id> [--version <number>] [--yes]
 ```
 
-Deletion is permanent and prompts unless `--yes` is supplied. Uploading a version, including one detected from the same machine and canonical file path, never changes artifact metadata. Use `edit` separately.
+Deletion is permanent. The CLI prompts unless you pass `--yes`. Uploading a version, including one matched from the same machine and canonical path, never changes artifact metadata. Use `edit` for that.
