@@ -180,6 +180,77 @@ describe("artifact lifecycle", () => {
         expect(otherArtifact.version.version).toBe(1);
     });
 
+    it("collapses concurrent first uploads from the same source into one artifact", async () => {
+        const [first, second] = await Promise.all([
+            createArtifact("one", SOURCE_HASH),
+            createArtifact("two", SOURCE_HASH),
+        ]);
+
+        expect(second.artifact.id).toBe(first.artifact.id);
+        expect(new Set([first.version.version, second.version.version])).toEqual(new Set([1, 2]));
+
+        const listed = await requestAs(OWNER, `/api/artifacts/${first.artifact.id}/versions`);
+        const { versions } = await listed.json<{ versions: { version: number }[] }>();
+        expect(versions.map((version) => version.version).sort()).toEqual([1, 2]);
+        expect(await env.DB.prepare(
+            "SELECT COUNT(*) AS count FROM artifacts WHERE owner_id = ?",
+        ).bind(OWNER.id).first<{ count: number }>()).toEqual({ count: 1 });
+        expect(await env.DB.prepare(
+            "SELECT COUNT(*) AS count FROM upload_sources WHERE owner_id = ? AND source_hash = ?",
+        ).bind(OWNER.id, SOURCE_HASH).first<{ count: number }>()).toEqual({ count: 1 });
+    });
+
+    it("does not rebind a source when a file is uploaded onto a different artifact", async () => {
+        const original = await createArtifact("original", SOURCE_HASH);
+        const otherHash = "b".repeat(64);
+        const other = await createArtifact("other", otherHash);
+
+        const attached = await requestAs(
+            OWNER,
+            `/api/artifacts/${original.artifact.id}/versions`,
+            {
+                method: "POST",
+                headers: { "X-Draftbox-Source-Hash": otherHash },
+                body: "attached",
+            },
+        );
+        expect(attached.status).toBe(201);
+
+        const implicit = await createArtifact("from-other", otherHash);
+        expect(implicit.artifact.id).toBe(other.artifact.id);
+        expect(implicit.version.version).toBe(2);
+
+        const unbound = await createArtifact("fresh", "c".repeat(64));
+        const stolen = await requestAs(
+            OWNER,
+            `/api/artifacts/${original.artifact.id}/versions`,
+            {
+                method: "POST",
+                headers: { "X-Draftbox-Source-Hash": "d".repeat(64) },
+                body: "onto-original",
+            },
+        );
+        expect(stolen.status).toBe(201);
+        const createdFromStolenHash = await createArtifact("new-source", "d".repeat(64));
+        expect(createdFromStolenHash.artifact.id).not.toBe(original.artifact.id);
+        expect(createdFromStolenHash.artifact.id).not.toBe(unbound.artifact.id);
+        expect(createdFromStolenHash.version.version).toBe(1);
+    });
+
+    it("allows a source to create a new artifact after its bound artifact is deleted", async () => {
+        const created = await createArtifact();
+        const deletion = await requestAs(
+            OWNER,
+            `/api/artifacts/${created.artifact.id}/versions/1`,
+            { method: "DELETE" },
+        );
+        expect(deletion.status).toBe(204);
+
+        const recreated = await createArtifact("again");
+        expect(recreated.artifact.id).not.toBe(created.artifact.id);
+        expect(recreated.version.version).toBe(1);
+    });
+
     it("hides artifacts from other authenticated users", async () => {
         const created = await createArtifact();
         const list = await requestAs(OTHER_USER, "/api/artifacts");

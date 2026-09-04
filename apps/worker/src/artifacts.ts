@@ -28,6 +28,12 @@ interface AllocatedVersionRow {
     version_number: number;
 }
 
+interface PreparedUpload {
+    sourceHash: string;
+    bytes: ArrayBuffer;
+    metadataPatch: ArtifactMetadataPatch;
+}
+
 function encodeBase64Url(bytes: Uint8Array): string {
     let binary = "";
     for (const byte of bytes) {
@@ -166,14 +172,26 @@ async function findArtifactBySourceHash(
 ): Promise<ArtifactRow | null> {
     return env.DB.prepare(
         `SELECT artifacts.*
-         FROM artifacts
-         JOIN versions ON versions.artifact_id = artifacts.id
-         WHERE artifacts.owner_id = ? AND versions.source_hash = ?
-         ORDER BY artifacts.updated_at DESC, versions.version_number DESC
-         LIMIT 1`,
+         FROM upload_sources
+         JOIN artifacts ON artifacts.id = upload_sources.artifact_id
+         WHERE upload_sources.owner_id = ? AND upload_sources.source_hash = ?`,
     )
         .bind(ownerId, sourceHash)
         .first<ArtifactRow>();
+}
+
+function isUploadSourceConflict(error: unknown): boolean {
+    const messages: string[] = [];
+    let current: unknown = error;
+    while (current instanceof Error) {
+        messages.push(current.message);
+        current = current.cause;
+    }
+    if (typeof current === "string") {
+        messages.push(current);
+    }
+    return messages.some((message) =>
+        /UNIQUE constraint failed: upload_sources\./i.test(message));
 }
 
 export async function createArtifact(
@@ -247,9 +265,23 @@ export async function createArtifact(
                     byte_size, created_at
                 ) VALUES (?, 1, ?, ?, ?, ?, ?)`,
             ).bind(artifactId, r2Key, contentHash, sourceHash, bytes.byteLength, now),
+            env.DB.prepare(
+                `INSERT INTO upload_sources (owner_id, source_hash, artifact_id)
+                 VALUES (?, ?, ?)`,
+            ).bind(user.id, sourceHash, artifactId),
         ]);
     } catch (error) {
         await env.ARTIFACTS.delete(r2Key);
+        if (isUploadSourceConflict(error)) {
+            const bound = await findArtifactBySourceHash(env, user.id, sourceHash);
+            if (bound !== null) {
+                return addPreparedVersion(request, env, user, bound, {
+                    sourceHash,
+                    bytes,
+                    metadataPatch: { filename, description },
+                });
+            }
+        }
         throw error;
     }
 
@@ -292,6 +324,18 @@ export async function addVersion(
     const bytes = await readUpload(request);
     const artifact = await findOwnedArtifact(env, artifactId, user.id);
     await assertUploadFitsStorage(env, bytes.byteLength);
+    return addPreparedVersion(request, env, user, artifact, { sourceHash, metadataPatch, bytes });
+}
+
+async function addPreparedVersion(
+    request: Request,
+    env: Env,
+    user: AuthenticatedUser,
+    artifact: ArtifactRow,
+    upload: PreparedUpload,
+): Promise<Response> {
+    const { sourceHash, metadataPatch, bytes } = upload;
+    const artifactId = artifact.id;
     const allocated = await env.DB.prepare(
         `UPDATE artifacts
          SET next_version = next_version + 1

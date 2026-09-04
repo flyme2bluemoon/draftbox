@@ -103,7 +103,7 @@ pnpx draftbox upload ./page.html
 pnpx draftbox list
 ```
 
-Uploading the same canonical file path from the same machine again adds a new version to its existing artifact. Use `--artifact` to add a file as a version of a different artifact.
+Upload the same canonical file path from the same machine again and Draftbox adds a new version to the existing artifact. Pass `--artifact` to attach a file as a version of an already existing artifact (note this does not bind the file provenance (hostname/filepath) to the artifact).
 
 Credentials are stored in `${XDG_CONFIG_HOME:-~/.config}/draftbox/credentials.json` with owner-only permissions. Set `DRAFTBOX_CONFIG_DIR` to change that directory.
 

@@ -45,5 +45,6 @@ The public link `/p/{random-secret}/vN` that resolves to one immutable **Version
 - An **Artifact** belongs to exactly one **Owner**.
 - An **Artifact** has one or more **Versions** while it exists.
 - A **Version** records the hashed identity of its **Upload Source**.
+- Within an **Owner**'s artifacts, each **Upload Source** binds to at most one **Artifact**. Implicit uploads from that source become new **Versions** of the bound **Artifact**. Explicit version uploads do not change the binding.
 - An **Artifact** has exactly one **Current Version**.
 - An **Artifact Link** and all related **Version Links** contain the same **Share Secret**.
