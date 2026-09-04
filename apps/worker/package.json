@@ -8,7 +8,8 @@
         "check": "tsc --noEmit",
         "deploy": "pnpm run build:deps && wrangler deploy",
         "dev": "pnpm run build:deps && wrangler dev",
-        "test": "pnpm run build:deps && vitest run"
+        "test": "pnpm run build:deps && vitest run",
+        "migration": "pnpm exec wrangler d1 migrations apply draftbox --remote"
     },
     "dependencies": {
         "@draftbox/contracts": "workspace:*",
