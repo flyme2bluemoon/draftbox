@@ -4,7 +4,10 @@
     "scripts": {
         "build": "pnpm --recursive build",
         "check": "pnpm --recursive check",
-        "test": "pnpm --recursive test"
+        "test": "pnpm --recursive test",
+        "release:patch": "node ./scripts/release.mjs patch",
+        "release:minor": "node ./scripts/release.mjs minor",
+        "release:major": "node ./scripts/release.mjs major"
     },
     "devDependencies": {
         "@cloudflare/vitest-pool-workers": "^0.22.0",
