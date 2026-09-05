@@ -1,6 +1,6 @@
 {
   "name": "draftbox",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Manage and share versioned HTML artifacts with Draftbox.",
   "license": "MIT",
